@@ -8,9 +8,9 @@ contract TexasHoldemTwoPlayers {
     uint256 public immutable entranceFee;
     uint256 public immutable totalPot;
 
-    address public currentPlayer;
-    mapping(address => uint) public playerPot;
-    mapping(address => uint) public playerCurrentBid; 
+    address public currentPlayer; // The player that does the next move
+    mapping(address => uint) public playerPot; // the amount of eth the player has left to play
+    mapping(address => uint) public playerCurrentBid; // the amount of eth the player has invested in the current round
 
     error CallerNotDealer();
     error InvalidWinner();
@@ -63,7 +63,7 @@ contract TexasHoldemTwoPlayers {
     // A function that handles the fold logic.
     function fold() public onlyPlaying {
         address playerFolding = currentPlayer;
-        address nextPlayer = NextPlayer();
+        address nextPlayer = NextTurn();
 
         playerCurrentBid[playerFolding] = 0; 
         playerPot[nextPlayer] += playerCurrentBid[playerFolding];
@@ -74,7 +74,7 @@ contract TexasHoldemTwoPlayers {
     // A function that handles the call logic.
     function call() public onlyPlaying {
         address playerCalling = currentPlayer;
-        address nextPlayer = NextPlayer();
+        address nextPlayer = NextTurn();
         require(playerPot[playerCalling] >= playerCurrentBid[nextPlayer], "Not enough funds to call");
 
         uint256 difference = playerCurrentBid[nextPlayer] - playerCurrentBid[playerCalling];
@@ -88,7 +88,7 @@ contract TexasHoldemTwoPlayers {
     function raise(uint256 _raiseAmount) public onlyPlaying {
         address playerRaising = currentPlayer;
         require(playerPot[playerRaising] >= _raiseAmount, "Not enough funds to raise");
-        address nextPlayer = NextPlayer();
+        address nextPlayer = NextTurn();
         require(_raiseAmount > playerCurrentBid[nextPlayer], "Must raise to a bigger amount that the current opponents bid");
 
         uint256 difference = _raiseAmount - playerCurrentBid[playerRaising];
@@ -109,8 +109,12 @@ contract TexasHoldemTwoPlayers {
         emit PlayerWon(_winnerAddress, totalPot);
     }
 
-    // function that handles changing the players turn
-    function NextPlayer() internal returns (address){
+    /**
+        Core game loop should be handled here. It currently only changes the current players turns.
+        With more time I would have implemented some logic. A quick althought suboptimal solution could be 
+        multiple if-else that handles Phase.Flop, Phase.Turn, Phase.River and Phase.Showdown respectively.
+    */
+    function NextTurn() internal returns (address){
         if(currentPlayer == player1){
             currentPlayer = player2;
             return player2;
@@ -120,3 +124,11 @@ contract TexasHoldemTwoPlayers {
         }
     }
 }
+
+/**
+    Things left to implement:
+    - complete the core game loop going from one phase to the next.
+    - Implement the rake logic. I am not sure if it's calculated every round or only at the end.
+    - Set initial bid based of who has the big blind and small blind.
+    - A lot more...
+ */
